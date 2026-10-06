@@ -48,6 +48,11 @@
 
     </label>
 
+<div class="account-actions">
+{% if user.role == 'admin' %}<a class="account-link" href="/admin">⚙ لوحة الإدارة</a>{% endif %}
+<span class="account-user">{{ user.full_name or user.username }}</span>
+<a class="account-link logout-link" href="/logout">تسجيل الخروج</a>
+</div>
 </header>
 
 

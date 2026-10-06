@@ -1,6 +1,11 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, session, flash
 import base64
 import io
+import os
+import sqlite3
+from datetime import datetime, timedelta
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import cv2
 import numpy as np
@@ -10,6 +15,63 @@ from reportlab.lib.utils import ImageReader
 
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key-before-production")
+DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scanner.db")
+
+def db_connection():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = db_connection()
+    conn.execute("""CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL, full_name TEXT NOT NULL DEFAULT '',
+        role TEXT NOT NULL DEFAULT 'user', active INTEGER NOT NULL DEFAULT 1,
+        expires_at TEXT, created_at TEXT NOT NULL)""")
+    admin = conn.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
+    if not admin:
+        conn.execute("INSERT INTO users(username,password_hash,full_name,role,active,expires_at,created_at) VALUES(?,?,?,?,?,?,?)",
+          (os.environ.get('ADMIN_USERNAME','admin'), generate_password_hash(os.environ.get('ADMIN_PASSWORD','Admin@12345')), 'مدير النظام','admin',1,None,datetime.now().isoformat(timespec='seconds')))
+    conn.commit(); conn.close()
+
+def current_user():
+    uid=session.get('user_id')
+    if not uid: return None
+    conn=db_connection(); u=conn.execute('SELECT * FROM users WHERE id=?',(uid,)).fetchone(); conn.close(); return u
+
+def account_valid(user):
+    if not user or not user['active']: return False
+    if user['role']=='admin' or not user['expires_at']: return True
+    try: return datetime.fromisoformat(user['expires_at']) >= datetime.now()
+    except ValueError: return False
+
+def login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user=current_user()
+        if not user: return redirect(url_for('login'))
+        if not account_valid(user):
+            session.clear(); flash('الحساب غير فعال أو انتهت مدة الاشتراك.', 'error'); return redirect(url_for('login'))
+        return view(*args, **kwargs)
+    return wrapped
+
+def api_login_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user=current_user()
+        if not account_valid(user): return jsonify({'error':'انتهت الجلسة أو الاشتراك. سجل الدخول مجدداً.'}), 401
+        return view(*args, **kwargs)
+    return wrapped
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user=current_user()
+        if not account_valid(user) or user['role']!='admin': return redirect(url_for('index'))
+        return view(*args, **kwargs)
+    return wrapped
 app.config["MAX_CONTENT_LENGTH"] = 30 * 1024 * 1024
 
 A4_SIZES = {
@@ -454,17 +516,76 @@ def compose_a4(items, orientation="portrait"):
 
 
 @app.route("/")
+@login_required
 def index():
+    return render_template("index.html", user=current_user())
 
-    return render_template(
-        "index.html"
-    )
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username=request.form.get("username","").strip()
+        password=request.form.get("password","")
+        conn=db_connection(); user=conn.execute("SELECT * FROM users WHERE username=?",(username,)).fetchone(); conn.close()
+        if user and check_password_hash(user['password_hash'], password):
+            if not account_valid(user): flash('الحساب غير فعال أو انتهت مدة الاشتراك.', 'error')
+            else:
+                session.clear(); session['user_id']=user['id']; return redirect(url_for('index'))
+        else: flash('اسم المستخدم أو كلمة المرور غير صحيحة.', 'error')
+    return render_template('login.html')
+
+@app.route("/logout")
+def logout():
+    session.clear(); return redirect(url_for('login'))
+
+@app.route("/admin")
+@admin_required
+def admin():
+    conn=db_connection(); users=conn.execute("SELECT * FROM users ORDER BY id DESC").fetchall(); conn.close()
+    return render_template('admin.html', users=users, user=current_user(), now=datetime.now())
+
+@app.route("/admin/users/create", methods=["POST"])
+@admin_required
+def create_user():
+    username=request.form.get('username','').strip(); password=request.form.get('password',''); full_name=request.form.get('full_name','').strip()
+    days=max(1,int(request.form.get('days','30') or 30)); expires=(datetime.now()+timedelta(days=days)).isoformat(timespec='seconds')
+    if not username or len(password)<6: flash('أدخل اسم مستخدم وكلمة مرور من 6 أحرف على الأقل.','error'); return redirect(url_for('admin'))
+    try:
+        conn=db_connection(); conn.execute("INSERT INTO users(username,password_hash,full_name,role,active,expires_at,created_at) VALUES(?,?,?,?,?,?,?)",(username,generate_password_hash(password),full_name,'user',1,expires,datetime.now().isoformat(timespec='seconds'))); conn.commit(); conn.close(); flash('تم إنشاء المستخدم.','success')
+    except sqlite3.IntegrityError: flash('اسم المستخدم مستخدم مسبقاً.','error')
+    return redirect(url_for('admin'))
+
+@app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
+@admin_required
+def toggle_user(user_id):
+    conn=db_connection(); u=conn.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
+    if u and u['role']!='admin': conn.execute("UPDATE users SET active=? WHERE id=?",(0 if u['active'] else 1,user_id)); conn.commit()
+    conn.close(); return redirect(url_for('admin'))
+
+@app.route("/admin/users/<int:user_id>/extend", methods=["POST"])
+@admin_required
+def extend_user(user_id):
+    days=max(1,int(request.form.get('days','30') or 30)); conn=db_connection(); u=conn.execute("SELECT * FROM users WHERE id=?",(user_id,)).fetchone()
+    if u and u['role']!='admin':
+        try: base=max(datetime.now(), datetime.fromisoformat(u['expires_at'])) if u['expires_at'] else datetime.now()
+        except ValueError: base=datetime.now()
+        conn.execute("UPDATE users SET expires_at=?, active=1 WHERE id=?",((base+timedelta(days=days)).isoformat(timespec='seconds'),user_id)); conn.commit()
+    conn.close(); return redirect(url_for('admin'))
+
+@app.route("/admin/users/<int:user_id>/password", methods=["POST"])
+@admin_required
+def reset_password(user_id):
+    password=request.form.get('password','')
+    if len(password)>=6:
+        conn=db_connection(); conn.execute("UPDATE users SET password_hash=? WHERE id=?",(generate_password_hash(password),user_id)); conn.commit(); conn.close(); flash('تم تغيير كلمة المرور.','success')
+    else: flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل.','error')
+    return redirect(url_for('admin'))
 
 
 @app.route(
     "/api/detect-corners",
     methods=["POST"],
 )
+@api_login_required
 def detect_corners_api():
     """إرجاع زوايا المستند المقترحة تلقائياً للواجهة."""
     try:
@@ -503,6 +624,7 @@ def detect_corners_api():
     "/api/process",
     methods=["POST"],
 )
+@api_login_required
 def process_document():
 
     try:
@@ -606,6 +728,7 @@ def process_document():
     "/api/export",
     methods=["POST"],
 )
+@api_login_required
 def export_document():
 
     try:
@@ -768,6 +891,8 @@ def export_document():
             }
         ), 500
 
+
+init_db()
 
 if __name__ == "__main__":
 
