@@ -1,1 +1,48 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لوحة الإدارة</title><link rel="stylesheet" href="/static/style.css"></head><body><main class="admin-page"><div style="display:flex;justify-content:space-between;align-items:center"><h1 style="color:var(--primary)">لوحة الإدارة</h1><a class="account-link" href="/">← المحرر</a></div>{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash {{category}}">{{message}}</div>{% endfor %}{% endwith %}<div class="admin-grid"><section class="admin-card"><h2>إضافة مستخدم</h2><form method="post" action="/admin/users/create"><label>الاسم</label><input name="full_name"><label>اسم المستخدم</label><input name="username" required><label>كلمة المرور</label><input name="password" type="password" minlength="6" required><label>مدة الاشتراك بالأيام</label><input name="days" type="number" min="1" value="30" required><button class="primary-button" style="width:100%">إنشاء الحساب</button></form></section><section class="admin-card"><h2>المستخدمون</h2>{% for u in users %}<div class="user-row"><strong>{{u.full_name or u.username}}</strong> — {{u.username}} {% if u.role=='admin' %}<span>مدير</span>{% else %}<span class="{{'active-badge' if u.active else 'inactive-badge'}}">{{'فعال' if u.active else 'متوقف'}}</span>{% endif %}<div class="user-meta"><span>الإنشاء: {{u.created_at[:10]}}</span><span>الانتهاء: {{u.expires_at[:10] if u.expires_at else 'غير محدد'}}</span></div>{% if u.role!='admin' %}<form class="inline-form" method="post" action="/admin/users/{{u.id}}/toggle"><button class="small-btn">{{'تعطيل' if u.active else 'تفعيل'}}</button></form><form class="inline-form" method="post" action="/admin/users/{{u.id}}/extend"><input name="days" type="number" min="1" value="30"><button class="small-btn">تمديد</button></form><form class="inline-form" method="post" action="/admin/users/{{u.id}}/password"><input name="password" type="password" minlength="6" placeholder="كلمة جديدة"><button class="small-btn">تغيير</button></form>{% endif %}</div>{% endfor %}</section></div></main></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الإدارة</title><link rel="stylesheet" href="/static/style.css">
+<style>
+.admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.admin-search{display:flex;gap:8px;flex:1;min-width:260px}.admin-search input{flex:1}
+.user-row-v21{border:1px solid #e3e6ea;border-radius:12px;padding:14px;margin-bottom:12px}
+.user-head-v21{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.user-title-v21{font-size:17px}.subscription-badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#eef5ff;font-size:12px}
+.subscription-badge.expired{background:#ffeceb;color:#b42318}
+.user-actions-v21{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.user-actions-v21 form{display:flex;gap:6px;align-items:center;margin:0}.user-actions-v21 input{width:110px}
+.danger-btn{border:1px solid #d92d20;background:#fff;color:#b42318;border-radius:8px;padding:8px 12px;cursor:pointer}
+.empty-users{text-align:center;padding:30px;color:#667085}
+@media(max-width:760px){.admin-search{min-width:100%}.user-actions-v21 form{width:100%}.user-actions-v21 input{flex:1;width:auto}}
+</style></head><body>
+<main class="admin-page">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h1 style="color:var(--primary)">لوحة الإدارة V2.1</h1><a class="account-link" href="/">← المحرر</a></div>
+{% with messages=get_flashed_messages(with_categories=true) %}{% for category,message in messages %}<div class="flash {{category}}">{{message}}</div>{% endfor %}{% endwith %}
+<div class="admin-grid">
+<section class="admin-card"><h2>إضافة مستخدم</h2>
+<form method="post" action="/admin/users/create" autocomplete="off">
+<label>الاسم</label><input name="full_name" autocomplete="off">
+<label>اسم المستخدم</label><input name="username" required autocomplete="off">
+<label>كلمة المرور</label><input name="password" type="password" minlength="6" required autocomplete="new-password">
+<label>مدة الاشتراك بالأيام</label><input name="days" type="number" min="1" value="30" required>
+<button class="primary-button" style="width:100%">إنشاء الحساب</button></form></section>
+<section class="admin-card"><h2>المستخدمون</h2>
+<div class="admin-toolbar"><form class="admin-search" method="get" action="/admin">
+<input name="q" value="{{query}}" placeholder="ابحث بالاسم أو اسم المستخدم"><button class="small-btn" type="submit">بحث</button>
+{% if query %}<a class="account-link" href="/admin">إظهار الكل</a>{% endif %}</form></div>
+{% for u in users %}
+<div class="user-row-v21"><div class="user-head-v21"><div><div class="user-title-v21">
+<strong>{{u.full_name or u.username}}</strong> — {{u.username}}
+{% if u.role=='admin' %}<span>مدير</span>{% else %}<span class="{{'active-badge' if u.active else 'inactive-badge'}}">{{'فعال' if u.active else 'متوقف'}}</span>{% endif %}
+</div><div class="user-meta"><span>الإنشاء: {{u.created_at[:10]}}</span><span>الانتهاء: {{u.expires_at[:10] if u.expires_at else 'غير محدد'}}</span>
+{% if u.role!='admin' %}<span class="subscription-badge {{'expired' if u.subscription.expired else ''}}">المتبقي: {{u.subscription.label}}</span>{% endif %}
+</div></div></div>
+{% if u.role!='admin' %}<div class="user-actions-v21">
+<form method="post" action="/admin/users/{{u.id}}/toggle"><button class="small-btn">{{'تعطيل' if u.active else 'تفعيل'}}</button></form>
+<form method="post" action="/admin/users/{{u.id}}/extend"><input name="days" type="number" min="1" value="30"><button class="small-btn">تمديد</button></form>
+<form method="post" action="/admin/users/{{u.id}}/password"><input name="password" type="password" minlength="6" placeholder="كلمة جديدة" autocomplete="new-password"><button class="small-btn">تغيير كلمة المرور</button></form>
+<form method="post" action="/admin/users/{{u.id}}/delete" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم نهائياً؟ لا يمكن التراجع عن العملية.');"><button class="danger-btn" type="submit">حذف المستخدم</button></form>
+</div>{% endif %}</div>
+{% else %}<div class="empty-users">لا توجد نتائج مطابقة للبحث.</div>{% endfor %}
+</section></div></main></body></html>

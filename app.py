@@ -515,6 +515,24 @@ def compose_a4(items, orientation="portrait"):
     return sheet
 
 
+
+def subscription_status(user):
+    """إرجاع حالة الاشتراك والأيام المتبقية للمستخدم."""
+    if user["role"] == "admin":
+        return {"label": "مدير", "remaining_days": None, "expired": False}
+    if not user["expires_at"]:
+        return {"label": "غير محدد", "remaining_days": None, "expired": False}
+    try:
+        expires_at = datetime.fromisoformat(user["expires_at"])
+        delta = expires_at - datetime.now()
+        if delta.total_seconds() < 0:
+            return {"label": "منتهي", "remaining_days": 0, "expired": True}
+        remaining_days = max(1, int((delta.total_seconds() + 86399) // 86400))
+        return {"label": f"{remaining_days} يوم", "remaining_days": remaining_days, "expired": False}
+    except (ValueError, TypeError):
+        return {"label": "تاريخ غير صالح", "remaining_days": 0, "expired": True}
+
+
 @app.route("/")
 @login_required
 def index():
@@ -540,8 +558,25 @@ def logout():
 @app.route("/admin")
 @admin_required
 def admin():
-    conn=db_connection(); users=conn.execute("SELECT * FROM users ORDER BY id DESC").fetchall(); conn.close()
-    return render_template('admin.html', users=users, user=current_user(), now=datetime.now())
+    query = request.args.get("q", "").strip()
+    conn = db_connection()
+    if query:
+        like = f"%{query}%"
+        users = conn.execute(
+            "SELECT * FROM users WHERE username LIKE ? OR full_name LIKE ? ORDER BY id DESC",
+            (like, like),
+        ).fetchall()
+    else:
+        users = conn.execute("SELECT * FROM users ORDER BY id DESC").fetchall()
+    conn.close()
+
+    user_rows = []
+    for item in users:
+        row = dict(item)
+        row["subscription"] = subscription_status(item)
+        user_rows.append(row)
+
+    return render_template("admin.html", users=user_rows, user=current_user(), now=datetime.now(), query=query)
 
 @app.route("/admin/users/create", methods=["POST"])
 @admin_required
@@ -579,6 +614,26 @@ def reset_password(user_id):
         conn=db_connection(); conn.execute("UPDATE users SET password_hash=? WHERE id=?",(generate_password_hash(password),user_id)); conn.commit(); conn.close(); flash('تم تغيير كلمة المرور.','success')
     else: flash('كلمة المرور يجب أن تكون 6 أحرف على الأقل.','error')
     return redirect(url_for('admin'))
+
+
+@app.route("/admin/users/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def delete_user(user_id):
+    conn = db_connection()
+    target = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+    if not target:
+        conn.close()
+        flash("المستخدم غير موجود.", "error")
+        return redirect(url_for("admin"))
+    if target["role"] == "admin":
+        conn.close()
+        flash("لا يمكن حذف حساب المدير.", "error")
+        return redirect(url_for("admin"))
+    conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+    flash("تم حذف المستخدم نهائياً.", "success")
+    return redirect(url_for("admin"))
 
 
 @app.route(
