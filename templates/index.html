@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>مصحح المستمسكات</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/style.css"
+    >
+</head>
+
+<body>
+
+<header class="topbar">
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            ◫
+        </div>
+
+        <div>
+            <h1>مصحح المستمسكات</h1>
+
+            <p>
+                تصحيح الزوايا والمنظور وتجهيز المستندات للطباعة
+            </p>
+        </div>
+
+    </div>
+
+    <label class="upload-button">
+
+        <span>＋ إضافة مستند</span>
+
+        <input
+            type="file"
+            id="fileInput"
+            accept="image/*"
+        >
+
+    </label>
+
+</header>
+
+
+<main class="container">
+
+
+    <!-- ============================== -->
+    <!-- المرحلة الأولى -->
+    <!-- ============================== -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="step-number">
+                    1
+                </span>
+
+                <h2>
+                    تحديد زوايا المستند
+                </h2>
+
+                <p>
+                    حرّك النقاط 1 ← 2 ← 3 ← 4 إلى زوايا المستند.
+                </p>
+
+            </div>
+
+            <div
+                id="fileStatus"
+                class="status"
+            >
+                لم يتم اختيار مستند
+            </div>
+
+        </div>
+
+
+        <div class="editor-grid">
+
+
+            <!-- الصورة الأصلية -->
+
+            <div class="editor-box">
+
+                <div class="box-title">
+
+                    الصورة الأصلية
+
+                    <span>
+                        اسحب النقاط
+                    </span>
+
+                </div>
+
+                <div class="canvas-container source-area">
+
+                    <canvas
+                        id="sourceCanvas"
+                    ></canvas>
+
+                    <div
+                        id="emptySource"
+                        class="empty-message"
+                    >
+
+                        <div class="empty-icon">
+                            ＋
+                        </div>
+
+                        <strong>
+                            أضف صورة المستند
+                        </strong>
+
+                        <span>
+                            JPG / PNG / WEBP
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <div class="corner-detection-actions">
+                    <button
+                        id="detectCornersButton"
+                        class="normal-button"
+                        type="button"
+                    >
+                        ✨ اكتشاف الزوايا تلقائياً
+                    </button>
+
+                    <span id="cornerDetectionStatus" class="status">
+                        سيتم اكتشاف الزوايا تلقائياً عند رفع الصورة
+                    </span>
+                </div>
+
+                <div class="point-help">
+
+                    <span>
+                        <b>1</b>
+                        أعلى يسار
+                    </span>
+
+                    <span>
+                        <b>2</b>
+                        أعلى يمين
+                    </span>
+
+                    <span>
+                        <b>3</b>
+                        أسفل يمين
+                    </span>
+
+                    <span>
+                        <b>4</b>
+                        أسفل يسار
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- النتيجة -->
+
+            <div class="editor-box">
+
+                <div class="box-title">
+
+                    معاينة التصحيح
+
+                    <span>
+                        النتيجة النهائية
+                    </span>
+
+                </div>
+
+                <div class="canvas-container preview-area">
+
+                    <canvas
+                        id="previewCanvas"
+                    ></canvas>
+
+                    <div
+                        id="emptyPreview"
+                        class="empty-message"
+                    >
+
+                        <div class="empty-icon">
+                            ✓
+                        </div>
+
+                        <strong>
+                            ستظهر النتيجة هنا
+                        </strong>
+
+                        <span>
+                            بعد الضغط على تصحيح المستند
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- أدوات التحسين -->
+
+        <div class="tools">
+
+            <div class="tool">
+
+                <label for="mode">
+                    نمط المعالجة
+                </label>
+
+                <select id="mode">
+
+                    <option value="original">
+                        الصورة الأصلية — بدون تحسين
+                    </option>
+
+                    <option value="color">
+                        ألوان محسنة
+                    </option>
+
+                    <option value="gray">
+                        رمادي
+                    </option>
+
+                    <option value="scan">
+                        أبيض وأسود Scanner
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="tool">
+
+                <label for="brightness">
+                    السطوع
+                    <span id="brightnessValue">
+                        100%
+                    </span>
+                </label>
+
+                <input
+                    id="brightness"
+                    type="range"
+                    min="0.5"
+                    max="1.5"
+                    value="1"
+                    step="0.05"
+                >
+
+            </div>
+
+
+            <div class="tool">
+
+                <label for="contrast">
+                    التباين
+                    <span id="contrastValue">
+                        100%
+                    </span>
+                </label>
+
+                <input
+                    id="contrast"
+                    type="range"
+                    min="0.5"
+                    max="1.8"
+                    value="1"
+                    step="0.05"
+                >
+
+            </div>
+
+
+            <div class="tool">
+
+                <label for="sharpness">
+                    الحدة
+                    <span id="sharpnessValue">
+                        100%
+                    </span>
+                </label>
+
+                <input
+                    id="sharpness"
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    value="1"
+                    step="0.05"
+                >
+
+            </div>
+
+
+            <button
+                id="correctButton"
+                class="primary-button"
+            >
+                تصحيح المستند
+            </button>
+
+        </div>
+
+
+        <div class="after-correction">
+
+            <label class="checkbox-line">
+
+                <input
+                    type="checkbox"
+                    id="autoAddA4"
+                    checked
+                >
+
+                <span>
+                    إضافة المستند المصحح تلقائياً إلى صفحة A4
+                </span>
+
+            </label>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ============================== -->
+    <!-- المرحلة الثانية -->
+    <!-- ============================== -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="step-number">
+                    2
+                </span>
+
+                <h2>
+                    تجهيز صفحة A4
+                </h2>
+
+                <p>
+                    يمكنك إضافة عدة مستندات وتحريك كل مستند بحرية داخل الصفحة.
+                </p>
+
+            </div>
+
+
+            <div class="orientation-buttons">
+
+                <button
+                    id="portraitButton"
+                    class="orientation-button active"
+                >
+                    A4 عمودي
+                </button>
+
+                <button
+                    id="landscapeButton"
+                    class="orientation-button"
+                >
+                    A4 أفقي
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <div class="a4-layout">
+
+
+            <!-- صفحة A4 -->
+
+            <div>
+
+                <div class="a4-workspace">
+
+                    <canvas
+                        id="a4Canvas"
+                    ></canvas>
+
+                </div>
+
+                <div class="a4-note">
+
+                    اسحب المستند لتغيير مكانه، واسحب مقابض الزوايا لتكبيره أو تصغيره مع الحفاظ على النسبة.
+
+                </div>
+
+            </div>
+
+
+
+            <!-- لوحة التحكم -->
+
+            <aside class="sidebar">
+
+                <div class="sidebar-section">
+
+                    <div class="sidebar-title">
+
+                        <h3>
+                            المستندات
+                        </h3>
+
+                        <span
+                            id="documentsCount"
+                            class="counter"
+                        >
+                            0
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        id="documentsList"
+                        class="documents-list"
+                    >
+
+                        <div
+                            id="noDocuments"
+                            class="no-documents"
+                        >
+                            لا توجد مستندات في A4
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="sidebar-section">
+
+                    <h3>
+                        مكان المستند
+                    </h3>
+
+
+                    <div class="position-grid">
+
+                        <button data-position="tl">
+                            أعلى يسار
+                        </button>
+
+                        <button data-position="tc">
+                            أعلى وسط
+                        </button>
+
+                        <button data-position="tr">
+                            أعلى يمين
+                        </button>
+
+
+                        <button data-position="ml">
+                            وسط يسار
+                        </button>
+
+                        <button data-position="mc">
+                            الوسط
+                        </button>
+
+                        <button data-position="mr">
+                            وسط يمين
+                        </button>
+
+
+                        <button data-position="bl">
+                            أسفل يسار
+                        </button>
+
+                        <button data-position="bc">
+                            أسفل وسط
+                        </button>
+
+                        <button data-position="br">
+                            أسفل يمين
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <div class="sidebar-section">
+
+                    <h3>
+                        تحديد دقيق
+                    </h3>
+
+
+                    <div class="two-columns">
+
+                        <label>
+
+                            X
+
+                            <input
+                                type="number"
+                                id="positionX"
+                                value="0"
+                            >
+
+                        </label>
+
+
+                        <label>
+
+                            Y
+
+                            <input
+                                type="number"
+                                id="positionY"
+                                value="0"
+                            >
+
+                        </label>
+
+                    </div>
+
+
+
+                    <label>
+
+                        حجم المستند
+
+                        <div class="range-with-value">
+
+                            <input
+                                id="documentScale"
+                                type="range"
+                                min="10"
+                                max="250"
+                                value="100"
+                            >
+
+                            <span id="documentScaleValue">
+                                100%
+                            </span>
+
+                        </div>
+
+                    </label>
+
+
+
+                    <div class="smart-size-box">
+
+                        <h3>المقاس الحقيقي للمستند</h3>
+
+                        <label for="documentPreset">
+                            نوع المستند
+                        </label>
+
+                        <select id="documentPreset">
+                            <option value="free">حر — بدون مقاس ثابت</option>
+                            <option value="passport">جواز سفر</option>
+                            <option value="national_id">البطاقة الوطنية</option>
+                            <option value="residence_card">بطاقة السكن</option>
+                            <option value="driving_license">إجازة السوق</option>
+                            <option value="id1">بطاقة ID-1 / مصرفية</option>
+                            <option value="a6">A6</option>
+                            <option value="a5">A5</option>
+                            <option value="custom">مقاس مخصص</option>
+                        </select>
+
+                        <div class="two-columns physical-size-inputs">
+                            <label>
+                                العرض mm
+                                <input
+                                    type="number"
+                                    id="documentWidthMm"
+                                    min="1"
+                                    step="0.1"
+                                    value=""
+                                    placeholder="العرض"
+                                >
+                            </label>
+
+                            <label>
+                                الارتفاع mm
+                                <input
+                                    type="number"
+                                    id="documentHeightMm"
+                                    min="1"
+                                    step="0.1"
+                                    value=""
+                                    placeholder="الارتفاع"
+                                >
+                            </label>
+                        </div>
+
+                        <label class="checkbox-line size-lock-line">
+                            <input
+                                type="checkbox"
+                                id="lockDocumentSize"
+                            >
+                            <span>🔒 قفل المقاس الحقيقي</span>
+                        </label>
+
+                        <div id="physicalSizeInfo" class="status">
+                            يمكنك اختيار مقاس جاهز أو إدخال مقاس مخصص.
+                        </div>
+
+                    </div>
+
+
+                    <label>
+
+                        دوران المستند
+
+                        <div class="range-with-value">
+
+                            <input
+                                id="documentRotation"
+                                type="range"
+                                min="-180"
+                                max="180"
+                                value="0"
+                            >
+
+                            <span id="documentRotationValue">
+                                0°
+                            </span>
+
+                        </div>
+
+                    </label>
+
+                </div>
+
+
+
+                <div class="sidebar-actions">
+
+                    <button
+                        id="duplicateDocument"
+                        class="normal-button"
+                    >
+                        نسخ المستند
+                    </button>
+
+                    <button
+                        id="deleteDocument"
+                        class="danger-button"
+                    >
+                        حذف المحدد
+                    </button>
+
+                    <button
+                        id="clearA4"
+                        class="outline-button"
+                    >
+                        تفريغ صفحة A4
+                    </button>
+
+                </div>
+
+            </aside>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- ============================== -->
+    <!-- المرحلة الثالثة -->
+    <!-- ============================== -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="step-number">
+                    3
+                </span>
+
+                <h2>
+                    تحميل الملف
+                </h2>
+
+                <p>
+                    اختر الصيغة والجودة المناسبة قبل إنشاء الملف.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="export-area">
+
+
+            <div class="export-option">
+
+                <label for="exportFormat">
+                    صيغة الملف
+                </label>
+
+                <select id="exportFormat">
+
+                    <option value="pdf">
+                        PDF
+                    </option>
+
+                    <option value="jpg">
+                        JPG
+                    </option>
+
+                    <option value="png">
+                        PNG
+                    </option>
+
+                    <option value="webp">
+                        WEBP
+                    </option>
+
+                </select>
+
+            </div>
+
+
+
+            <div class="export-option quality-option">
+
+                <label>
+
+                    ضغط / جودة الملف
+
+                    <strong id="qualityValue">
+                        85%
+                    </strong>
+
+                </label>
+
+                <input
+                    id="exportQuality"
+                    type="range"
+                    min="10"
+                    max="100"
+                    value="85"
+                >
+
+                <div class="quality-labels">
+
+                    <span>
+                        حجم أصغر
+                    </span>
+
+                    <span>
+                        جودة أعلى
+                    </span>
+
+                </div>
+
+            </div>
+
+
+
+            <button
+                id="downloadButton"
+                class="download-button"
+            >
+
+                ↓ تحميل الملف النهائي
+
+            </button>
+
+        </div>
+
+
+        <div
+            id="message"
+            class="message"
+        ></div>
+
+    </section>
+
+
+</main>
+
+
+<footer>
+
+    مصحح المستمسكات — معالجة المستندات وتجهيزها للطباعة
+
+</footer>
+
+
+<script src="/static/app.js"></script>
+
+</body>
+</html>
