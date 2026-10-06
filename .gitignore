@@ -1,0 +1,27 @@
+# Customer database
+scanner.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local secrets
+.env
+.env.*
+
+# Backup/development files
+*_backup.py
+*_backup.js
+*_backup.css
+*_backup.html
+*_updated.py
+*_updated.js
+*_updated.css
+*_updated.html
+
+# OS/editor files
+.DS_Store
+Thumbs.db
